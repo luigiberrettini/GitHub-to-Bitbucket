@@ -112,7 +112,22 @@ do
     printf "\n18. curl --silent --user \"$GitHubUser:$GitHubToken\" \"https://api.github.com/repos/$GitHubOrg/$OldRepoName\" --request PATCH --data '{\"name\": \"$OldRepoName_MigratedToBitbucket\"}'\n"
     curl --silent --user "$GitHubUser:$GitHubToken" "https://api.github.com/repos/$GitHubOrg/$OldRepoName" --request PATCH --data "{\"name\": \"$OldRepoName_MigratedToBitbucket\"}" > /dev/null
 
-    printf "\n19. cd $SCRIPT_DIR\n"
+    printf "\n19. git filter-branch --env-filter to rewrite history mapping GitHub users to Bitbucket ones\n"
+    MailmapFilePath="$SCRIPT_DIR/authors/authors_mailmap.txt"
+    if [ -f $MailmapFilePath ]; then
+        git filter-branch --env-filter '
+            R=`echo "$GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL>" | git -c mailmap.file='$MailmapFilePath' check-mailmap --stdin`
+            export GIT_AUTHOR_NAME="${R% <*@*>}"
+            R="${R##* <}"
+            export GIT_AUTHOR_EMAIL="${R%>}"
+            R=`echo "$GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL>" | git -c mailmap.file='$MailmapFilePath' check-mailmap --stdin`
+            export GIT_COMMITTER_NAME="${R% <*@*>}"
+            R="${R##* <}"
+            export GIT_COMMITTER_EMAIL="${R%>}"
+        ' -- --all
+    fi
+
+    printf "\n20. cd $SCRIPT_DIR\n"
     cd $SCRIPT_DIR
 done < $OldNewReposCsv
 IFS=$OIFS

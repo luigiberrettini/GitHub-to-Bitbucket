@@ -6,11 +6,11 @@ OldNewReposCsv=$1
 GitHubOrg=$2
 GitHubUser=$3
 GitHubToken=$4
-BitbucketBaseURL=$2
-BitbucketProjectName=$3
-BitbucketUser=$4
-BitbucketPassword=$5
-BitbucketTeamName=$6
+BitbucketBaseURL=$5
+BitbucketProjectName=$6
+BitbucketUser=$7
+BitbucketPassword=$8
+BitbucketTeamName=$9
 
 
 
@@ -61,8 +61,8 @@ while read OldRepoName NewRepoName
 do
     printf "\n********************\n"
 
-    printf "\n01. git clone --bare https://github.com/$GitHubOrg/$OldRepoName $SCRIPT_DIR/repos/git/$OldRepoName\n"
-    git clone --bare https://github.com/$GitHubOrg/$OldRepoName $SCRIPT_DIR/repos/git/$OldRepoName
+    printf "\n01. git clone --bare https://$GitHubUser:$GitHubToken@github.com/$GitHubOrg/$OldRepoName $SCRIPT_DIR/repos/git/$OldRepoName\n"
+    git clone --bare https://$GitHubUser:$GitHubToken@github.com/$GitHubOrg/$OldRepoName $SCRIPT_DIR/repos/git/$OldRepoName
 
     printf "\n02. curl --silent --user \"$BitbucketUser:BitbucketPassword\" -H \"X-Atlassian-Token: nocheck\" -H \"Content-Type: application/json\" -X PUT \"$BitbucketBaseURL/repos?projectname=$BitbucketProjectName&name=$NewRepoName\" | $SCRIPT_DIR/jq '.values | map(select(.name == \"'$NewRepoName'\"))[0].slug'\n"
     NewRepoNeedsSuffix=`curl --silent --user "$BitbucketUser:$BitbucketPassword" -H "X-Atlassian-Token: nocheck" -H "Content-Type: application/json" -X PUT "$BitbucketBaseURL/repos?projectname=$BitbucketProjectName&name=$NewRepoName" | $SCRIPT_DIR/jq '.values | map(select(.name == "'$NewRepoName'"))[0].slug'`
@@ -91,28 +91,28 @@ do
     curl -H "X-Atlassian-Token: nocheck" -H "Content-Type: application/json" -H "Authorization Basic $authCredentials" -X PUT "$BitbucketBaseURL/projects/$BitbucketProjectKey/repos/$NewRepoSlug/permissions/groups?name=$BitbucketTeamName&permission=REPO_ADMIN" > /dev/null
 
     RemoteOrigin="$BitbucketBaseURL/scm/$BitbucketProjectKey/${NewRepoName}.git"
-    printf "\n14. git remote add bitbktsrv \"$RemoteOrigin\"\n    git remote -v\n    git push --all bitbktsrv\n    git push --tags bitbktsrv\n"
+    printf "\n09. git remote add bitbktsrv \"$RemoteOrigin\"\n    git remote -v\n    git push --all bitbktsrv\n    git push --tags bitbktsrv\n"
     git remote add bitbktsrv "$RemoteOrigin"
     git remote -v
     git push --all bitbktsrv
     git push --tags bitbktsrv
 
-    printf "\n15. Teams=curl --silent --user \"$GitHubUser:$GitHubToken\" \"https://api.github.com/repos/$GitHubOrg/$OldRepoName/teams\" | ./jq -c '.[] | {id, name}'\n"
+    printf "\n10. Teams=curl --silent --user \"$GitHubUser:$GitHubToken\" \"https://api.github.com/repos/$GitHubOrg/$OldRepoName/teams\" | ./jq -c '.[] | {id, name}'\n"
     Teams=curl --silent --user "$GitHubUser:$GitHubToken" "https://api.github.com/repos/$GitHubOrg/$OldRepoName/teams" | ./jq -c '.[] | {id, name}'
 
-    printf "\n16. TeamIds=curl --silent --user \"$GitHubUser:$GitHubToken\" \"https://api.github.com/repos/$GitHubOrg/$OldRepoName/teams\" | ./jq '.[].id'\n"
+    printf "\n11. TeamIds=curl --silent --user \"$GitHubUser:$GitHubToken\" \"https://api.github.com/repos/$GitHubOrg/$OldRepoName/teams\" | ./jq '.[].id'\n"
     TeamIds=curl --silent --user "$GitHubUser:$GitHubToken" "https://api.github.com/repos/$GitHubOrg/$OldRepoName/teams" | ./jq '.[].id'
 
-    printf "\n17. Remove permissions for all teams\n"
+    printf "\n12. Remove permissions for all teams\n"
     echo "$TeamIds" | while read -r TeamId; do
         printf "    curl --silent -H \"Accept: application/vnd.github.v3+json\" --user \"$GitHubUser:$GitHubToken\" \"https://api.github.com/teams/$TeamId/repos/YTech/$OldRepoName\" --request DELETE > /dev/null\n"
         curl --silent -H "Accept: application/vnd.github.v3+json" --user "$GitHubUser:$GitHubToken" "https://api.github.com/teams/$TeamId/repos/YTech/$OldRepoName" --request DELETE > /dev/null
     done
 
-    printf "\n18. curl --silent --user \"$GitHubUser:$GitHubToken\" \"https://api.github.com/repos/$GitHubOrg/$OldRepoName\" --request PATCH --data '{\"name\": \"$OldRepoName_MigratedToBitbucket\"}'\n"
+    printf "\n13. curl --silent --user \"$GitHubUser:$GitHubToken\" \"https://api.github.com/repos/$GitHubOrg/$OldRepoName\" --request PATCH --data '{\"name\": \"$OldRepoName_MigratedToBitbucket\"}'\n"
     curl --silent --user "$GitHubUser:$GitHubToken" "https://api.github.com/repos/$GitHubOrg/$OldRepoName" --request PATCH --data "{\"name\": \"$OldRepoName_MigratedToBitbucket\"}" > /dev/null
 
-    printf "\n19. git filter-branch --env-filter to rewrite history mapping GitHub users to Bitbucket ones\n"
+    printf "\n14. git filter-branch --env-filter to rewrite history mapping GitHub users to Bitbucket ones\n"
     MailmapFilePath="$SCRIPT_DIR/authors/authors_mailmap.txt"
     if [ -f $MailmapFilePath ]; then
         git filter-branch --env-filter '
@@ -127,7 +127,7 @@ do
         ' -- --all
     fi
 
-    printf "\n20. cd $SCRIPT_DIR\n"
+    printf "\n15. cd $SCRIPT_DIR\n"
     cd $SCRIPT_DIR
 done < $OldNewReposCsv
 IFS=$OIFS

@@ -25,9 +25,10 @@ tail -c1 $OldNewReposCsv | read -r _ || echo >> $OldNewReposCsv
 
 
 
-printf "\nCreating authors and repos/hg folders\n"
+printf "\nCreating authors and repos/git folders\n"
 mkdir --parent $SCRIPT_DIR/repos/git
 mkdir --parent $SCRIPT_DIR/authors/git
+mkdir --parent $SCRIPT_DIR/authors/last-migration
 
 
 
@@ -37,14 +38,17 @@ while read OldRepoName NewRepoName
 do
     printf "\n********************\n"
 
-    printf "\n01. git clone https://github.com/$GitHubOrg/$OldRepoName $SCRIPT_DIR/repos/git/$OldRepoName\n"
-    git clone --bare https://github.com/$GitHubOrg/$OldRepoName $SCRIPT_DIR/repos/git/$OldRepoName
+    printf "\n01. git clone https://$GitHubUser:$GitHubToken@github.com/$GitHubOrg/$OldRepoName $SCRIPT_DIR/repos/git/$OldRepoName\n"
+    git clone https://$GitHubUser:$GitHubToken@github.com/$GitHubOrg/$OldRepoName $SCRIPT_DIR/repos/git/$OldRepoName
 
-    printf "\n02. git shortlog -se | perl -ple \"s/^\s*\d+\t//\" | sort | uniq > $SCRIPT_DIR/authors/git/github_authors_${OldRepoName}.txt\n"
-    git shortlog -se | perl -ple "s/^\s*\d+\t//" | sort | uniq > $SCRIPT_DIR/authors/git/github_authors_${OldRepoName}.txt
+    printf "\n02. git log --pretty=format:'%an <%ae>' | sort | uniq > $SCRIPT_DIR/authors/git/github_authors_${OldRepoName}.txt\n"
+    git -C $SCRIPT_DIR/repos/git/$OldRepoName log --pretty=format:'%an <%ae>' | sort | uniq > $SCRIPT_DIR/authors/git/github_authors_${OldRepoName}.txt
 
-    printf "\n03. rm -rf $SCRIPT_DIR/repos/git/$OldRepoName\n"
-    rm -rf $SCRIPT_DIR/repos/hg/$OldRepoName
+    printf "\n03. cp $SCRIPT_DIR/authors/git/github_authors_${OldRepoName}.txt $SCRIPT_DIR/authors/last-migration\n"
+    cp $SCRIPT_DIR/authors/git/github_authors_${OldRepoName}.txt $SCRIPT_DIR/authors/last-migration
+
+    printf "\n04. rm -rf $SCRIPT_DIR/repos/git/$OldRepoName\n"
+    rm -rf $SCRIPT_DIR/repos/git/$OldRepoName
 done < $OldNewReposCsv
 IFS=$OIFS
 

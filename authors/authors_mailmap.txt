@@ -1,0 +1,2 @@
+NewCommitterName NewCommiterSurname <newuser@newserver.newtld> <olduser@oldserver.oldtld>
+NewCommitterName NewCommiterSurname <newuser@newserver.newtld> OldCommitterName OldCommiterSurname <olduser@oldserver.oldtld>
